@@ -3,10 +3,13 @@ import Backdrop from "../components/Backdrop/Backdrop";
 import Modal from "../components/Modal/Modal";
 import "./events.css";
 import AuthContext from "../context/auth-context";
+import EventList from "../components/Events/EventList/EventList";
 
 const EventPage = () => {
   const [creating, setCreating] = useState(false);
   const [events, setEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const titleElRef = useRef();
   const priceElRef = useRef();
   const dateElRef = useRef();
@@ -19,6 +22,7 @@ const EventPage = () => {
 
   const modalCancelHandler = () => {
     setCreating(false);
+    setSelectedEvent(null);
   };
 
   const modalConfirmHandler = () => {
@@ -37,9 +41,7 @@ const EventPage = () => {
       return;
     }
 
-    const event = { title, price, date, description };
-    console.log(event);
-
+    // const event = { title, price, date, description };
     const requestBody = {
       query: `
           mutation {
@@ -75,8 +77,19 @@ const EventPage = () => {
         return res.json();
       })
       .then((resData) => {
-        // console.log(resData);
-        fetchEvents();
+        setEvents((prevState) => [
+          ...prevState,
+          {
+            _id: resData.data.createEvent._id,
+            title: resData.data.createEvent.title,
+            description: resData.data.createEvent.description,
+            date: resData.data.createEvent.date,
+            price: resData.data.createEvent.proce,
+            creator: {
+              _id: authContext.userId,
+            },
+          },
+        ]);
       })
       .catch((err) => {
         console.log(err);
@@ -84,6 +97,7 @@ const EventPage = () => {
   };
 
   const fetchEvents = () => {
+    setIsLoading(true);
     const requestBody = {
       query: `
           query {
@@ -116,29 +130,32 @@ const EventPage = () => {
         return res.json();
       })
       .then((resData) => {
+        setIsLoading(false);
         const events = resData.data.events;
         setEvents(events);
       })
       .catch((err) => {
+        setIsLoading(false);
         console.log(err);
       });
   };
+
+  const showDetailhandler = (eventId) => {
+    setSelectedEvent(() => {
+      const selectedEvent = events.find((e) => e._id === eventId);
+      return selectedEvent;
+    });
+  };
+
+  const bookEventHandler = () => {};
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
-  const eventList = events.map((event) => {
-    return (
-      <li key={event._id} className="events-list-item">
-        {event.title}
-      </li>
-    );
-  });
-
   return (
     <React.Fragment>
-      {creating && <Backdrop />}
+      {(creating || selectedEvent) && <Backdrop />}
       {creating && (
         <Modal
           title="Add Event"
@@ -146,6 +163,7 @@ const EventPage = () => {
           canConfirm
           onCancel={modalCancelHandler}
           onConfirm={modalConfirmHandler}
+          confirmText="Confirm"
         >
           <form>
             <div className="form-control">
@@ -167,6 +185,23 @@ const EventPage = () => {
           </form>
         </Modal>
       )}
+      {selectedEvent && (
+        <Modal
+          title={selectedEvent.title}
+          canCancel
+          canConfirm
+          onCancel={modalCancelHandler}
+          onConfirm={bookEventHandler}
+          confirmText="Book"
+        >
+          <h1>{selectedEvent.title}</h1>
+          <h2>
+            {selectedEvent.price} -{" "}
+            {new Date(selectedEvent.date).toLocaleDateString()}
+          </h2>
+          <p>{selectedEvent.description}</p>
+        </Modal>
+      )}
       {authContext.token && (
         <div className="events-control">
           <p>Share your own Events!</p>
@@ -175,7 +210,15 @@ const EventPage = () => {
           </button>
         </div>
       )}
-      <ul className="events-list">{eventList}</ul>
+      {isLoading ? (
+        <p style={{ textAlign: "center" }}>Loading...</p>
+      ) : (
+        <EventList
+          events={events}
+          authUserId={authContext.userId}
+          onViewDetail={showDetailhandler}
+        />
+      )}
     </React.Fragment>
   );
 };
