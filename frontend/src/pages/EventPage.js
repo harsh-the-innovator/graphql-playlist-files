@@ -16,6 +16,8 @@ const EventPage = () => {
   const descriptionElRef = useRef();
   const authContext = useContext(AuthContext);
 
+  const isActive = useRef(true);
+
   const startCreateEventHandler = () => {
     setCreating(true);
   };
@@ -130,12 +132,16 @@ const EventPage = () => {
         return res.json();
       })
       .then((resData) => {
-        setIsLoading(false);
         const events = resData.data.events;
-        setEvents(events);
+        if (isActive.current === true) {
+          setIsLoading(false);
+          setEvents(events);
+        }
       })
       .catch((err) => {
-        setIsLoading(false);
+        if (isActive.current === true) {
+          setIsLoading(false);
+        }
         console.log(err);
       });
   };
@@ -147,10 +153,52 @@ const EventPage = () => {
     });
   };
 
-  const bookEventHandler = () => {};
+  const bookEventHandler = () => {
+    if (!authContext.token) {
+      setSelectedEvent(null);
+      return;
+    }
+    const requestBody = {
+      query: `
+          mutation {
+            bookEvent(eventId: "${selectedEvent._id}") {
+              _id
+              createdAt
+              updatedAt
+            }
+          }
+        `,
+    };
+
+    fetch("http://localhost:8000/graphql", {
+      method: "POST",
+      body: JSON.stringify(requestBody),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + authContext.token,
+      },
+    })
+      .then((res) => {
+        if (res.status !== 200 && res.status !== 201) {
+          throw new Error("Failed!");
+        }
+        return res.json();
+      })
+      .then((resData) => {
+        console.log(resData);
+        setSelectedEvent(null);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  };
 
   useEffect(() => {
     fetchEvents();
+
+    return () => {
+      isActive.current = false;
+    };
   }, []);
 
   return (
@@ -192,7 +240,7 @@ const EventPage = () => {
           canConfirm
           onCancel={modalCancelHandler}
           onConfirm={bookEventHandler}
-          confirmText="Book"
+          confirmText={authContext.token ? "Book" : "Confirm"}
         >
           <h1>{selectedEvent.title}</h1>
           <h2>

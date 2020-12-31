@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const morgan = require("morgan");
 
 const { graphqlHTTP } = require("express-graphql");
 
@@ -11,6 +12,7 @@ const isAuth = require("./middleware/is-auth");
 const app = express();
 
 app.use(bodyParser.json());
+app.use(morgan("dev"));
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
