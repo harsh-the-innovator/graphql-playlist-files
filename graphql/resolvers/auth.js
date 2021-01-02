@@ -40,10 +40,10 @@ module.exports = {
       { userId: user.id, email: user.email },
       "somesupersecretkey",
       {
-        expiresIn: "1h",
+        expiresIn: "30000ms",
       }
     );
 
-    return { userId: user.id, token: token, tokenExpiration: 1 };
+    return { userId: user.id, token: token, tokenExpiration: 30000 };
   },
 };
